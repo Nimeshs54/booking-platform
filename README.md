@@ -46,23 +46,24 @@ The system integrates:
 
 ## 📁 Project Structure
 
+```bash
 AI-Code-Analysis/
 │
 ├── src/
-│ ├── data_preprocessing.py
-│ ├── graph_builder.py
-│ ├── llm_query_engine.py
-│ ├── rag_pipeline.py
-│ ├── api_server.py
+│   ├── data_preprocessing.py        # Handles code parsing and preprocessing
+│   ├── graph_builder.py             # Builds graph representation of code structure
+│   ├── llm_query_engine.py          # Handles LLM reasoning and query processing
+│   ├── rag_pipeline.py              # Core RAG (Retrieval-Augmented Generation) logic
+│   ├── api_server.py                # FastAPI server for RESTful API access
 │
 ├── notebooks/
-│ ├── exploration.ipynb
-│ └── visualization.ipynb
+│   ├── exploration.ipynb            # Code exploration and data visualization
+│   └── visualization.ipynb          # Visual analytics for graph structures
 │
 ├── configs/
-│ └── model_config.yaml
+│   └── model_config.yaml            # Model and pipeline configuration settings
 │
-├── requirements.txt
-├── Dockerfile
-├── README.md
-└── LICENSE
+├── requirements.txt                 # Python dependencies
+├── Dockerfile                       # Containerization setup
+├── README.md                        # Project documentation
+└── LICENSE                          # License file
