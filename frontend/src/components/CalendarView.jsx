@@ -1,45 +1,92 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import API from '../api';
-import { formatISO, addDays } from 'date-fns';
-import io from 'socket.io-client';
 
-export default function CalendarView({ resource, onBook }) {
-    const [bookings, setBookings] = useState([]);
-    const [from, setFrom] = useState(formatISO(new Date(), { representation: 'date' }));
-    const wsUrl = import.meta.env.VITE_WS_URL || 'http://localhost:4000';
-    useEffect(() => {
-        load();
-        const socket = io(wsUrl);
-        socket.emit('joinResource', { resourceId: resource.id });
-        socket.on('booking.created', b => {
-            load();
-        });
-        return () => {
-            socket.emit('leaveResource', { resourceId: resource.id });
-            socket.disconnect();
-        };
-    }, [resource, from]);
+const HOURS = Array.from({ length: 13 }, (_, i) => i + 8); // 08:00–20:00
 
-    async function load() {
-        const toDate = addDays(new Date(from), 7);
-        const r = await API.get(`/bookings/resource/${resource.id}/bookings?from=${from}&to=${formatISO(toDate)}`);
-        setBookings(r.data);
-    }
+function startOfDay(d) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
 
-    return (
-        <div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <div>Resource: {resource.name}</div>
-                <button onClick={onBook}>Book slot</button>
-            </div>
+export default function CalendarView({ resource, readOnly }) {
+  const [bookings, setBookings] = useState([]);
 
-            <ul>
-                {bookings.map(b => (
-                    <li key={b.id}>
-                        {new Date(b.start_ts).toLocaleString()} - {new Date(b.end_ts).toLocaleString()} by {b.user_id ? b.user_id : 'guest'}
-                    </li>
-                ))}
-            </ul>
+  const days = useMemo(() => {
+    const base = startOfDay(new Date());
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      return d;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!resource) return;
+
+    API.get(`/bookings/resource/${resource.id}/bookings`, {
+      params: {
+        from: days[0].toISOString(),
+        to: days[6].toISOString(),
+      },
+    })
+      .then(r => setBookings(r.data || []))
+      .catch(console.error);
+  }, [resource, days]);
+
+  function bookingAt(day, hour) {
+    return bookings.find(b => {
+      const s = new Date(b.start_ts);
+      return (
+        s.getDate() === day.getDate() &&
+        s.getHours() === hour
+      );
+    });
+  }
+
+  return (
+    <div className="calendar-grid">
+      <div className="calendar-header">
+        <div />
+        {days.map(d => (
+          <div key={d.toISOString()} className="calendar-day">
+            {d.toLocaleDateString(undefined, {
+              weekday: 'short',
+              day: 'numeric',
+            })}
+          </div>
+        ))}
+      </div>
+
+      {HOURS.map(hour => (
+        <div key={hour} className="calendar-row">
+          <div className="calendar-hour">{hour}:00</div>
+
+          {days.map(day => {
+            const booking = bookingAt(day, hour);
+
+            return (
+              <div
+                key={day.toISOString() + hour}
+                className={
+                  'calendar-cell ' +
+                  (booking ? 'calendar-cell-booked' : '') +
+                  (readOnly ? ' calendar-cell-disabled' : '')
+                }
+                title={
+                  booking
+                    ? `Booked ${new Date(booking.start_ts).toLocaleTimeString()}`
+                    : readOnly
+                    ? 'Login to book'
+                    : 'Available'
+                }
+              >
+                {booking ? 'Booked' : ''}
+              </div>
+            );
+          })}
         </div>
-    );
+      ))}
+    </div>
+  );
 }
